@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 29 11:22:01 2020
+Created on Tue Dec 03 11:22:01 2023
 
 @author: sarah
 """
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     isbns = list()
     worksLinks = list()
     baseLink = "https://openlibrary.org/"
-    keywords = ['guitar', 'physics', 'python']
+    keywords = ['bowling']
     style = ".json"
 
     isbns = list(set(findIsbn(keywords)))
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     authorsDF.drop(dropAuths, axis=1, inplace=True)
 
     dropBooks = ['index', 'last_modified.type', 'type.key', 'notes.type',
-                 'description.type', 'table_of_contents.type.key',
+                 'description.type',
                  'first_sentence.type', 'created.type', 'works.key',
                  'authors.key']
     booksDF.drop(dropBooks, axis=1, inplace=True)
