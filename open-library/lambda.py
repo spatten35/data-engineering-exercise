@@ -1,14 +1,22 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Dec 03 11:22:01 2023
 
 @author: sarah
 """
+import boto3
 from copy import deepcopy
+import decimal
 import json
 import pandas as pd
 import requests
 import time
+import os
+import sys
+from datetime import datetime
+import logging
+
 
 def crossJoin(left, right):
     """
@@ -40,6 +48,7 @@ def crossJoin(left, right):
             newRows.append(deepcopy(tempRow))
     return newRows
 
+
 def findIsbn(searchTerms):
     """
 
@@ -70,6 +79,7 @@ def findIsbn(searchTerms):
             if 'isbn' in book:
                 bookIsbns += book['isbn']
     return bookIsbns
+
 
 def flattenList(data):
     """
@@ -133,7 +143,15 @@ def formatData(objs):
     return pd.DataFrame(flattenJson(objs))
 
 
-def getData(keys, api):
+def handle_data_type(obj):
+    """
+    Convert decimal.Decimal objects into float for JSON serialization.
+    """
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError
+
+def getData(keys, api, baseLink):
     """
 
     Parameters
@@ -168,17 +186,33 @@ def getData(keys, api):
     return data
 
 
+def writeToS3(bucket, key, data):
+    """
+    Parameters
+    ----------
+    bucket : is a concat of bucket, date (YYYY/MM/DD), and client (i.e. google);
+        this should be from the metadata table
+    key : 
+    data : should be a list full of dictionaries; added handle_data_type to handle floats
+
+    Returns
+    -------
+    None.
+
+    """
+    s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+    s3_client.put_object(
+        Body=data, Bucket=bucket, Key=key
+    )
 
 
-if __name__ == '__main__':
+def handler(event, context):
     isbns = list()
-    worksLinks = list()
     baseLink = "https://openlibrary.org/"
     keywords = ['bowling']
-    style = ".json"
 
     isbns = list(set(findIsbn(keywords)))
-    booksDF = formatData(getData(isbns, 'isbn/')).drop_duplicates().reset_index()
+    booksDF = formatData(getData(isbns, 'isbn/', baseLink=baseLink)).drop_duplicates().reset_index()
     booksDF.dropna(subset=['authors.key'], inplace=True)
     booksDF['authors.key'] = booksDF['authors.key'].apply(lambda x: x.split('/')[-1] if isinstance(x, str)  else None)
     authorsDF = formatData(getData(booksDF['authors.key'].unique(), 'authors/')).drop_duplicates().reset_index()
@@ -218,6 +252,19 @@ if __name__ == '__main__':
     outBooks = 'books' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
     outBridge = 'bridge' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
 
-    authorsDF.to_json(outAuthors)
-    booksDF.to_json(outBooks)
-    bridgeDF.to_json(outBridge)
+
+    # Set up to output to S3
+    today = datetime.today()
+    bucket = "open-library-dummy-bucket"
+    authorsKey = '/'.join(["authors", today.year, today.month, today.day, outAuthors])
+    booksKey = '/'.join(["books", today.year, today.month, today.day, outBooks])
+    bridgeKey = '/'.join(["bridge", today.year, today.month, today.day, outBridge])
+
+    authors = authorsDF.to_csv()
+    books = booksDF.to_csv()
+    bridge = bridgeDF.to_csv()
+
+    writeToS3(bucket=bucket, key=authorsKey, data=authors)
+    writeToS3(bucket=bucket, key=booksKey, data=books)
+    writeToS3(bucket=bucket, key=bridgeKey, data=bridge)
+
