@@ -218,6 +218,6 @@ if __name__ == '__main__':
     outBooks = 'books' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
     outBridge = 'bridge' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
 
-    authorsDF.to_json(outAuthors)
-    booksDF.to_json(outBooks)
-    bridgeDF.to_json(outBridge)
+    authorsDF.to_csv(outAuthors)
+    booksDF.to_csv(outBooks)
+    bridgeDF.to_csv(outBridge)
