@@ -1,0 +1,39 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudWatch",
+      "Effect": "${cloudwatch_access}",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "S3ListAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::open-library-${env}"
+      ]
+    },
+    {
+      "Sid": "S3Access",
+      "Action": [
+          "s3:GetObject",
+          "s3:PutObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::open-library-${env}/",
+        "arn:aws:s3:::open-library-${env}/*"
+      ]
+    }
+  ]
+}

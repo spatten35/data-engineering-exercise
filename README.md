@@ -1,65 +1,44 @@
-## Fender Digital Data Engineering Exercise
-This project communicates with the Open Library API to find some suggested books and authors by using the search API to get the top 100 books (with multiple editions for some) suggested from a keyword or keywords. It then exports the data to csv files.
+1. **Architecture Overview**:
+   - Briefly outline the architecture and the technologies or services you would use. As we use AWS, mention any relevant AWS services.
+   - Include a simple data model diagram.
 
-Within the program a list of keywords is used to call the search API to just initially get some ISBN values to gather book data for. Once the ISBNs are available, the ISBN portion of the API can be called for each value to obtain the book data JSONs.
+   The architecture I would use for a system pulling data the open library API would include a lambda, S3, and a cloudwatch trigger for scheduling regular pulls.
 
-After all of the book data is gathered, it is flattened out so it'll be easier to view later in the csv. To flatten the data, it iteratively goes through each layer and determines what its structure is. Each layer has the cartesian product taken between it and the layer nested below it so that each nested object gets it's own line, keeping the information for the outer layer. Lists at the lowest level keep the list as a single line, separated by commas; so ['spooky', 'scary', 'skeletons'] would become 'spooky, scary, skeletons'.
+   Running on a cloudwatch scheduled trigger, the lambda would run at a monthly interval to pull data on Bowling to find any new books on the topic. The JSON data that is pulled from the API is flattened and cleaned up before being written to s3 as a csv. 
+   
+   After being written to s3, an s3 alert would trigger a second lambda to clean the data more, formatting dates and removing bad records, and writing to a "cleaned" s3 folder.
 
-Within the book data, the authors key exists, which can be used to get JSON data for each author. Prior to making the calls to get the data, rows with null author keys are dropped so that there aren't any issues with it. Since the key has the '/authors/' at the beginning, the string is split by '/' then only the last position is kept to look up the authors. The author data is found for each unique authors key in the books table. After the authors JSON is found, it is flattened as well.
+   After the data is written to a "clean" s3 folder, a third lambda would be triggered to do an upsert to the data.
 
-After both tables are found, the bridge csv file is created with the key and author key fields from the books table. A handful of columns are dropped from the books and authors tables, and any remaining key fields are stripped down to just the key value.
+2. **Python Script**:
+   - openLibrary.py is able to be run
+      This currently handles some of the cleaning that would be better handled in the second lambda, where the first would ideally just write directly from the API
+   - open-library/lambda.py is not currently running, but would be the starting point to setting up the working lambda.
 
-The three tables are then written to their individual csv files.
+3. **Sample Data Output**:
+   - Provide CSV outputs for 'Authors' and 'Books'.
+   - Include a simple 'Authors and Books' relation (no need for a full bridge table).
+   authors20231203-162743.csv
+   books20231203-162743.csv
+   bridge20231203-162743.csv
 
-How to use?
-Prior to running the project, setup the environment by issuing the command
-pip install -r requirements.txt
-The openLibrary.py file can then be run as is; if you want to change the search terms, the openLibrary.py file will need to be opened and the list keywords will need to be updated.
+4. **Data Processing**:
+   - Write a SQL query (or Python equivalent) to aggregate:
+     - books_by_author.csv
+     
+   - Discuss how you would optimize this for a larger dataset.
+   For a larger data set, I would either set up partitioning on the dataset, or create keys for it, specificially on the publishing date and authors_key.
+   When reading from the dataset, I would make sure to include one of the keys for filtering the data.
 
+5. **Presentation**:
+   - Prepare a short presentation explaining your approach, decisions made, and any assumptions.
+   - Discuss what you would do differently in a production environment and potential enhancements.
 
-Future Enhancements
-	* Allow input for the search terms
-	* Create automated process to import the data directly into the database
-	* Find a way to grab multiple books at once to limit API calls
-	* Add tests to track how long it takes for each step in the process
-	* Adjust the keywords to allow for use of the other customizability in the search API
-	* Grab all the data in works API for additional information on books
-	* Clean the data up a little more by trying to format column as date / fixing ones missing days / months
-	* Include more error handling
+   Production Environment:
+   The first lambda would only be for reading from the API and not making any changes to the data that is pulled.
+   Rather than doing a full pull, as it currently does, only new or records modified after the last run date would be pulled from the API
+   Before doing the initial first run, I would download files for all the data for the specific topic.
 
-Notes
-There are a lot of calls to the API, once for each ISBN and then again for each author. This causes it to be slow, so more specific searches could potentially help speed it up. The API only gives the first 100, even if there are thousands of matches for the keyword.
-------------------------------------------------------------------------------
-Design and implement a data pipeline that that pulls data from [Open Library.]https://openlibrary.org/dev/docs/api/books As an out put of this exercise we expect to see a minimum of the following:
-
-1. Python program that pulls data from the rest api
-2. CSV files for the following:
-	* Authors
-	* Books
-	* Authors and Books (a bridge table between the previous entities)
-3. DDL to create a hypothetical database schema ( you don't have to create a DB but you are welcome to)
-
-The objective of this exercise is to have you walk us through a solution you have created. Do as much or as little as you would like.
-
-
-# ReadMe
-Please include:
-* a readme file that explains your thinking
-* a data model showing your design, explain why you designed the db and include the DDL used to generate the tables in your database
-* how to run and set up your project
-* if you have tests, include instructions on how to run them
-* a description of:
-	* enhancements you might make
-	* additional features you have added to help or that you found interesting
-* questions you have
-* recommendations for us
-
-
-# Additional Info:
-* we expect that this will take you a few hours to complete
-* use any language or framework you are comfortable with we prefer Python
-* Bonus points for setting up a db
-* Bonus points for security, specs, etc.
-* Do as little or as much as you like.
-
-Please fork this repo and commit your code into that fork. Show your work and process through those commits.
+6. **ReadMe & Documentation**:
+   - Include a brief ReadMe file explaining your approach.
+   - Document any setup instructions or prerequisites.
